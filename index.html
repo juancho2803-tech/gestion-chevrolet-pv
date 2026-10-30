@@ -352,6 +352,12 @@ details.ger-tabla summary{cursor:pointer;font-size:12px;color:var(--text-dim);ma
 .ger-chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--surface-alt);border:1px solid var(--border);color:var(--text-dim);}
 .ger-chip.ok{color:var(--ok);border-color:color-mix(in srgb, var(--ok) 45%, transparent);}
 .ger-chip.bad{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 45%, transparent);}
+.xls-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);padding:6px 11px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.xls-btn:hover{border-color:var(--accent);color:var(--accent);}
+.xls-bar{display:flex;justify-content:flex-end;padding:8px 0;}
+.table-panel > .xls-bar{padding:8px 20px 0;}
+.table-head .xls-btn{margin-left:auto;}
+.table-head .table-count + .xls-btn{margin-left:10px;}
 .ger-btn{background:var(--surface-alt);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
 .ger-btn:hover{border-color:var(--mod-gerencia);}
 /* Externa vs Garantía */
@@ -1457,6 +1463,12 @@ function titleCase(s){ return (s===null||s===undefined?'':String(s)).toLowerCase
 /* Arma el HTML de una tabla fila por fila; si una fila puntual tiene un dato con
    formato inesperado y tira error, esa fila se omite (con log) en vez de romper
    el render de toda la tabla. */
+/* Filas COMPLETAS de cada tabla (en pantalla se muestran solo las primeras N; la descarga a Excel usa todas) */
+const EXPORT_FULL = {};
+function safeRowsHtmlExp(bodyId, arr, max, fn){
+  EXPORT_FULL[bodyId] = { arr, fn };
+  return safeRowsHtml(arr.slice(0, max), fn);
+}
 function safeRowsHtml(arr, fn){
   const out = [];
   for(const item of arr){
@@ -2325,7 +2337,7 @@ function renderSiniestros(){
   document.getElementById('siniestroTableCount').textContent = `${shownRows.length.toLocaleString('es-AR')} orden(es)`;
   document.getElementById('siniestroEmptyState').classList.toggle('hidden', total > 0);
   document.getElementById('siniestroTable').classList.toggle('hidden', total === 0);
-  document.getElementById('siniestroTableBody').innerHTML = safeRowsHtml(shownRows.slice(0,400), r => {
+  document.getElementById('siniestroTableBody').innerHTML = safeRowsHtmlExp('siniestroTableBody', shownRows, 400, r => {
     const dias = diasEnEstado(r);
     return `
     <tr>
@@ -2503,7 +2515,7 @@ function renderPedidos(){
   document.getElementById('pedidoTableCount').textContent = `${shownRows.length.toLocaleString('es-AR')} orden(es)`;
   document.getElementById('pedidoEmptyState').classList.toggle('hidden', total > 0);
   document.getElementById('pedidoTable').classList.toggle('hidden', total === 0);
-  document.getElementById('pedidoTableBody').innerHTML = safeRowsHtml(shownRows.slice(0,400), r => {
+  document.getElementById('pedidoTableBody').innerHTML = safeRowsHtmlExp('pedidoTableBody', shownRows, 400, r => {
     const demora = demoraPedidoDias(r);
     const demoraTxt = demora===null ? '—' : `${demora} d${!r.fConfirmRepuestos ? ' (en curso)' : ''}`;
     const dh = diasHabilesDisponible(r);
@@ -2604,7 +2616,7 @@ function renderAtencionTurnos(rows){
   document.getElementById('atencionTable').classList.toggle('hidden', conTurno.length === 0);
   const RESULT_LABEL = { aTiempo:'A tiempo', demora:'Demora', clienteTarde:'Cliente llegó tarde' };
   const RESULT_COLOR = { aTiempo:'ok', demora:'bad', clienteTarde:'none' };
-  document.getElementById('atencionTableBody').innerHTML = safeRowsHtml(withTurnoSorted.slice(0,300), ({r,a}) => `
+  document.getElementById('atencionTableBody').innerHTML = safeRowsHtmlExp('atencionTableBody', withTurnoSorted, 300, ({r,a}) => `
     <tr>
       <td>${r.orden}</td>
       <td>${titleCase(r.asesor)}</td>
@@ -2631,7 +2643,7 @@ function renderTrackeo(){
   document.getElementById('trackeoTableCount').textContent = `${shownRows.length.toLocaleString('es-AR')} orden(es)`;
   document.getElementById('trackeoEmptyState').classList.toggle('hidden', rows.length > 0);
   document.getElementById('trackeoTable').classList.toggle('hidden', rows.length === 0);
-  document.getElementById('trackeoTableBody').innerHTML = safeRowsHtml(shownRows.slice(0,400), r => {
+  document.getElementById('trackeoTableBody').innerHTML = safeRowsHtmlExp('trackeoTableBody', shownRows, 400, r => {
     const tApertura = combineDateTime(r.fApertura, r.horaApertura);
     const tMarcacion1 = combineDateTime(r.fMarcacion1, r.horaMarcacion1);
     const tUltimaMarcacion = combineDateTime(r.fUltimaMarcacion, r.horaUltimaMarcacion);
@@ -2802,7 +2814,7 @@ function renderAccesorios(){
   document.getElementById('accesorioTableCount').textContent = `${shownRows.length.toLocaleString('es-AR')} orden(es)`;
   document.getElementById('accesorioEmptyState').classList.toggle('hidden', total > 0);
   document.getElementById('accesorioTable').classList.toggle('hidden', total === 0);
-  document.getElementById('accesorioTableBody').innerHTML = safeRowsHtml(shownRows.slice(0,400), r => `
+  document.getElementById('accesorioTableBody').innerHTML = safeRowsHtmlExp('accesorioTableBody', shownRows, 400, r => `
     <tr>
       <td>${r.orden}</td>
       <td>${titleCase(r.cliente)}</td>
@@ -3035,7 +3047,7 @@ function renderGarantia(){
   document.getElementById('garantiaTableCount').textContent = `${shownRows.length.toLocaleString('es-AR')} orden(es)`;
   document.getElementById('garantiaEmptyState').classList.toggle('hidden', total > 0);
   document.getElementById('garantiaTable').classList.toggle('hidden', total === 0);
-  document.getElementById('garantiaTableBody').innerHTML = safeRowsHtml(shownRows.slice(0,400), r => `
+  document.getElementById('garantiaTableBody').innerHTML = safeRowsHtmlExp('garantiaTableBody', shownRows, 400, r => `
     <tr>
       <td>${r.orden}</td>
       <td>${titleCase(r.cliente)}</td>
@@ -3339,7 +3351,7 @@ function renderTable(){
 
   const MAXROWS = 400;
   const shown = rows.slice(0, MAXROWS);
-  document.getElementById('tableBody').innerHTML = safeRowsHtml(shown, r => `
+  document.getElementById('tableBody').innerHTML = safeRowsHtmlExp('tableBody', rows, MAXROWS, r => `
     <tr>
       <td>${r.orden}</td>
       <td>${fmtDate(r.fApertura)}</td>
@@ -5012,6 +5024,102 @@ setTheme(localStorage.getItem('tablero_chevrolet_theme') || 'dark');
     }
   }catch(e){}
   if(getGasUrl()) loadFromGAS(); else updateSyncBadge('off');
+})();
+</script>
+<script>
+/* ============ DESCARGA A EXCEL DE CADA TABLA (respeta filtros y buscador de la vista) ============ */
+(function(){
+  const ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>';
+  // "$ 1.234.567,50" / "1.234" / "-12,5" → número; el resto queda como texto
+  function toCell(txt){
+    const t = txt.replace(/\s+/g,' ').trim();
+    if(t === '' || t === '—' || t === '-') return t === '' ? '' : t;
+    const m = t.match(/^(-|−)?\s*\$?\s*(\d{1,3}(?:\.\d{3})+|\d+)(,\d+)?$/);
+    if(m){ const n = parseFloat(m[2].replace(/\./g,'') + (m[3] ? '.' + m[3].slice(1) : '')); return (m[1] ? -n : n); }
+    return t;
+  }
+  function cellText(td){
+    const c = td.cloneNode(true);
+    c.querySelectorAll('svg,canvas,button,input,select,script,style').forEach(x => x.remove());
+    c.querySelectorAll('.sub2').forEach(x => { x.textContent = ' — ' + x.textContent; });
+    c.querySelectorAll('br').forEach(x => x.replaceWith(' '));
+    return c.textContent;
+  }
+  function tableToAoa(table){
+    const aoa = [];
+    table.querySelectorAll('tr').forEach(tr => {
+      if(tr.closest('table') !== table) return;
+      const row = [];
+      tr.querySelectorAll('th,td').forEach(td => {
+        if(td.parentElement !== tr) return;
+        row.push(toCell(cellText(td)));
+        for(let k = 1; k < (+td.colSpan || 1); k++) row.push('');
+      });
+      if(row.some(v => v !== '')) aoa.push(row);
+    });
+    return aoa;
+  }
+  function tituloDe(table){
+    const sub = table.closest('.grid-2 > div:not(.panel)');
+    const h = (sub && sub.querySelector('h4')) || table.closest('.table-panel, .panel')?.querySelector('h3');
+    return (h ? h.textContent : table.id).replace(/\s+/g,' ').trim();
+  }
+  function filtrosActivos(view){
+    const ns = (view?.id || '').replace(/^view-/, '');
+    const out = [];
+    if(typeof filterState !== 'undefined' && filterState[ns]){
+      FILTER_CONFIGS.forEach(cfg => {
+        const sel = filterState[ns][cfg.key], vals = (cfgValues[ns] || {})[cfg.key] || [];
+        if(sel && sel.size && sel.size < vals.length)
+          out.push([cfg.label, [...sel].map(v => cfg.fmt ? cfg.fmt(v) : v).join(', ')]);
+      });
+    }
+    view?.querySelectorAll('.search-box input').forEach(inp => { if(inp.value.trim()) out.push(['Búsqueda', inp.value.trim()]); });
+    return out;
+  }
+  function slug(t){ return t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'').toLowerCase().slice(0,50); }
+
+  function descargar(table){
+    if(typeof XLSX === 'undefined'){ alert('No se pudo cargar la librería de Excel. Revisá la conexión.'); return; }
+    let src = table;
+    const tb = table.querySelector('tbody[id]');
+    const full = tb && EXPORT_FULL[tb.id];
+    if(full){                       // tablas que en pantalla se cortan: reconstruir con todas las filas filtradas
+      src = table.cloneNode(true);
+      src.querySelector('tbody#' + CSS.escape(tb.id)).innerHTML = safeRowsHtml(full.arr, full.fn);
+    }
+    const aoa = tableToAoa(src);
+    if(aoa.length <= 1){ alert('La tabla no tiene datos para descargar con los filtros actuales.'); return; }
+    const titulo = tituloDe(table);
+    const view = table.closest('.view');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = aoa[0].map((_, j) => ({ wch: Math.min(48, Math.max(8, ...aoa.slice(0, 300).map(r => String(r[j] ?? '').length + 2))) }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:aoa.length-1, c:aoa[0].length-1} }) };
+    XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+    const fil = filtrosActivos(view);
+    const info = [['Tablero', 'Gestión Operativa Chevrolet'], ['Tabla', titulo], ['Descargado', new Date().toLocaleString('es-AR')], ['Filas', aoa.length - 1], [], ['Filtros aplicados', fil.length ? '' : 'Ninguno (todos los datos)'], ...fil];
+    const wsF = XLSX.utils.aoa_to_sheet(info); wsF['!cols'] = [{wch:20},{wch:80}];
+    XLSX.utils.book_append_sheet(wb, wsF, 'Filtros');
+    XLSX.writeFile(wb, `${slug(titulo) || 'tabla'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  function boton(table){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'xls-btn'; b.title = 'Descargar esta tabla en Excel con los filtros aplicados';
+    b.innerHTML = ICON + 'Excel';
+    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); descargar(table); });
+    return b;
+  }
+  document.querySelectorAll('.view table[id]').forEach(table => {
+    if(table.id === 'gerLlamarTabla') return;   // ya tiene su propio botón de descarga
+    const wrap = table.closest('details') || table.closest('.table-scroll') || table;
+    const panel = table.closest('.table-panel');
+    const head = panel && panel.querySelector(':scope > .table-head');
+    if(head && panel.querySelectorAll('table[id]').length === 1){ head.appendChild(boton(table)); return; }
+    const bar = document.createElement('div'); bar.className = 'xls-bar'; bar.appendChild(boton(table));
+    wrap.parentNode.insertBefore(bar, wrap);
+  });
 })();
 </script>
 </body>
